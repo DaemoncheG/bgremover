@@ -1,0 +1,6 @@
+rembg
+opencv-python
+tqdm
+pillow
+numpy
+onnxruntime

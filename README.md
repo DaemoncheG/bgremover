@@ -97,6 +97,9 @@ python main.py input_folder output_folder
 
 - `--bg-color` цвет фона (black, white, green, blue)
 
+- `--coreml` число процессов CoreML (по умолчанию 2 на Apple Silicon)
+- `--cpu` число CPU процессов (по умолчанию 2 на Windows/Linux)
+
 Список моделей:
 
 ```bash
@@ -110,3 +113,13 @@ python main.py --list-models
 - macOS Apple Silicon - CoreML
 - Windows - CPU
 - Linux - CPU
+
+---
+
+## ✅ Тестирование
+
+Быстрый smoke-тест CLI (скрипт находится в `scripts/smoke_test.sh`):
+
+```bash
+./scripts/smoke_test.sh
+```

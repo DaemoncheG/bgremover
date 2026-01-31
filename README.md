@@ -96,6 +96,7 @@ python main.py input_folder output_folder
   - u2net_human_seg
 
 - `--bg-color` цвет фона (black, white, green, blue)
+
 - `--coreml` число процессов CoreML (по умолчанию 2 на Apple Silicon)
 - `--cpu` число CPU процессов (по умолчанию 2 на Windows/Linux)
 

@@ -96,7 +96,6 @@ python main.py input_folder output_folder
   - u2net_human_seg
 
 - `--bg-color` цвет фона (black, white, green, blue)
-- `--fast` ручное управление потоками
 
 Список моделей:
 

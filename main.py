@@ -28,8 +28,22 @@ VIDEO_BITRATE = "2M"
 GIF_FPS_LIMIT = 0
 
 AVAILABLE_MODELS = [
-    "u2net", "u2netp", "u2net_human_seg", "u2net_cloth_seg", 
-    "silueta", "isnet-general-use", "isnet-anime", "sam"
+    "u2net",
+    "u2netp",
+    "u2net_human_seg",
+    "u2net_cloth_seg",
+    "silueta",
+    "isnet-general-use",
+    "isnet-anime",
+    "sam",
+    "birefnet-general",
+    "birefnet-general-lite",
+    "birefnet-portrait",
+    "birefnet-dis",
+    "birefnet-hrsod",
+    "birefnet-cod",
+    "birefnet-massive",
+    "bria-rmbg",
 ]
 
 # ==============================================================================

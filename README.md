@@ -72,6 +72,46 @@ pip install -r requirements.txt
 - Вход: `input.jpg`
 - Выход: `output.png` (прозрачный фон)
 
+### Быстрые примеры для новичков (картинки)
+
+**1) Самый простой вариант**
+```bash
+# Входная картинка -> прозрачный PNG
+python main.py input.jpg output.png
+```
+
+**2) Явно указать модель**
+```bash
+python main.py input.jpg output.png --model u2net
+```
+
+**3) Сохранить результат в JPG (фон станет белым)**
+```bash
+python main.py input.png output.jpg
+```
+
+**4) Сохранить результат в WebP**
+```bash
+python main.py input.jpg output.webp
+```
+
+**5) Папка целиком (все картинки внутри)**
+```bash
+# Все изображения из папки input/ попадут в output/ с сохранением структуры
+python main.py input/ output/
+```
+
+**6) Папка с точкой в названии (обязательно слэш в конце)**
+```bash
+# Если у папки есть точка, добавьте слэш, чтобы не спутать с расширением
+python main.py photos.v1/ out/
+```
+
+**7) Если хотите, чтобы выход был всегда PNG**
+```bash
+python main.py input.jpg output.png --img-format png
+```
+
 ### Картинка
 
 ```bash
@@ -88,6 +128,45 @@ python main.py video.mp4 result.mp4 --bg-color green
 
 ```bash
 python main.py video.mp4 result.webm
+```
+
+### Быстрые примеры для новичков (видео)
+
+**1) Прозрачный фон (рекомендуется)**
+```bash
+# Лучший вариант для прозрачности — WebM
+python main.py video.mp4 result.webm
+```
+
+**2) MP4 с заданным фоном**
+```bash
+python main.py video.mp4 result.mp4 --bg-color black
+```
+
+**3) MP4 с зеленым фоном (для хромакея)**
+```bash
+python main.py video.mp4 result.mp4 --bg-color green
+```
+
+**4) GIF**
+```bash
+python main.py video.mp4 result.gif
+```
+
+**5) Пакетная обработка папки с видео**
+```bash
+python main.py videos/ out_videos/
+```
+
+**6) Ускорение (для macOS Apple Silicon)**
+```bash
+# Использовать CoreML (обычно быстрее)
+python main.py video.mp4 result.webm --coreml 2
+```
+
+**7) Ускорение (CPU, Windows/Linux)**
+```bash
+python main.py video.mp4 result.webm --cpu 2
 ```
 
 ### Пакетная обработка папки

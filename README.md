@@ -79,6 +79,23 @@ python main.py <input> <output> [options]
 > (по умолчанию: `png` и `webm`). Если указать `output.jpg`, но оставить `--img-format png`,
 > файл будет сохранён как PNG с переименованием.
 
+### Служебные команды CLI
+
+**Показать справку со всеми опциями**
+```bash
+python main.py --help
+```
+
+**Вывести список доступных моделей**
+```bash
+python main.py --list-models
+```
+
+**Показать подробный вывод FFmpeg и ускорителей**
+```bash
+python main.py input.mp4 output.webm --verbose
+```
+
 ### Пример результата
 
 **До / После**
@@ -192,6 +209,10 @@ python main.py input_folder output_folder
 
 ## ⚙️ Параметры
 
+Команда принимает два позиционных аргумента:
+- `input` — файл или папка;
+- `output` — файл или папка.
+
 - `--model` выбор модели сегментации  
   - u2net (по умолчанию)
   - u2netp
@@ -211,13 +232,17 @@ python main.py input_folder output_folder
   - bria-rmbg
 
 - `--img-format` формат вывода изображений: `png`, `webp`, `jpg` (по умолчанию `png`)
+- `--img-quality` качество JPEG/WebP (1–100, по умолчанию `95`)
 - `--vid-format` формат вывода видео: `webm`, `mp4`, `gif` (по умолчанию `webm`)
+- `--video-bitrate` битрейт WebM (например, `2M`)
+- `--gif-fps-limit` ограничение FPS для GIF (0 = без ограничения)
 - `--bg-color` цвет фона (black, white, green, blue). Любое другое значение трактуется как `black`.
 - `--coreml` число процессов CoreML (по умолчанию 2 на Apple Silicon). При ошибках CoreML автоматически используется CPU.
   - Рекомендуемые значения: 1–4
 - `--cpu` число CPU процессов (по умолчанию 2 на Windows/Linux)
   - Рекомендуемые значения: 1–4
 - `--verbose` подробный вывод FFmpeg и ошибок ускорителей
+- `--list-models` выводит список поддерживаемых моделей и завершает работу
 
 Список моделей:
 

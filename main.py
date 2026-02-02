@@ -23,9 +23,9 @@ DEFAULT_MODEL = "u2net"
 DEFAULT_IMG_EXT = "png"
 DEFAULT_VID_EXT = "webm"
 
-IMG_QUALITY   = 95
-VIDEO_BITRATE = "2M"
-GIF_FPS_LIMIT = 0
+DEFAULT_IMG_QUALITY = 95
+DEFAULT_VIDEO_BITRATE = "2M"
+DEFAULT_GIF_FPS_LIMIT = 0
 
 AVAILABLE_MODELS = [
     "u2net",
@@ -50,6 +50,7 @@ AVAILABLE_MODELS = [
 
 worker_session = None
 HAS_X264 = False
+IMG_QUALITY = DEFAULT_IMG_QUALITY
 
 IMG_FORMATS_READ = ['.png', '.webp', '.jpg', '.jpeg', '.bmp', '.tiff']
 VIDEO_FORMATS_READ = ['.mp4', '.mov', '.avi', '.gif', '.mkv', '.webm']
@@ -88,8 +89,10 @@ def get_hardware_defaults():
     else:
         return 0, 2 
 
-def init_worker(role_queue, model_name, verbose):
+def init_worker(role_queue, model_name, verbose, img_quality):
     global worker_session
+    global IMG_QUALITY
+    IMG_QUALITY = img_quality
     os.environ["ORT_LOGGING_LEVEL"] = "3"
     providers = ['CPUExecutionProvider']
     if role_queue is not None:
@@ -108,7 +111,8 @@ def init_worker(role_queue, model_name, verbose):
 # --- AUDIO ---
 
 def transfer_audio(source_path, target_path, verbose=False):
-    if not os.path.exists(source_path) or not os.path.exists(target_path): return
+    if not os.path.exists(source_path) or not os.path.exists(target_path):
+        return
     ext = os.path.splitext(target_path)[1].lower()
     temp_output = target_path + ".temp" + ext 
 
@@ -217,7 +221,7 @@ def process_images_batch(files_list, args, manager):
     total_workers = get_total_workers(args)
     role_queue = prepare_roles(manager, args)
     print(f"🖼 Картинки: {len(files_list)} шт.")
-    with ProcessPoolExecutor(max_workers=total_workers, initializer=init_worker, initargs=(role_queue, args.model, args.verbose)) as executor:
+    with ProcessPoolExecutor(max_workers=total_workers, initializer=init_worker, initargs=(role_queue, args.model, args.verbose, args.img_quality)) as executor:
         # FIX: Memory Optimization (Streaming instead of list)
         for _ in tqdm(executor.map(process_single_image_task, files_list), total=len(files_list), unit="img"): pass
 
@@ -249,7 +253,7 @@ def process_video_mp4_h264(input_path, output_path, args, role_queue, bg_color):
             bg_static[:] = bg_color
             bg_static_f = bg_static.astype(np.float32)
 
-            with ProcessPoolExecutor(max_workers=get_total_workers(args), initializer=init_worker, initargs=(role_queue, args.model, args.verbose)) as executor:
+            with ProcessPoolExecutor(max_workers=get_total_workers(args), initializer=init_worker, initargs=(role_queue, args.model, args.verbose, args.img_quality)) as executor:
                 bs = get_total_workers(args) * 2
                 with tqdm(total=total, unit="frame", leave=False) as pbar:
                     while cap.isOpened():
@@ -304,12 +308,12 @@ def process_webm_transparent(input_path, output_path, args, role_queue):
             'ffmpeg', '-hide_banner', '-nostdin', '-y', 
             '-f', 'rawvideo', '-vcodec', 'rawvideo', '-s', f'{w}x{h}', '-pix_fmt', 'rgba',
             '-r', str(fps), '-i', '-', '-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p',
-            '-b:v', VIDEO_BITRATE, '-auto-alt-ref', '0', output_path
+            '-b:v', args.video_bitrate, '-auto-alt-ref', '0', output_path
         ]
         proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=None if args.verbose else subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         ffmpeg_dead = False
 
-        with ProcessPoolExecutor(max_workers=get_total_workers(args), initializer=init_worker, initargs=(role_queue, args.model, args.verbose)) as executor:
+        with ProcessPoolExecutor(max_workers=get_total_workers(args), initializer=init_worker, initargs=(role_queue, args.model, args.verbose, args.img_quality)) as executor:
             bs = get_total_workers(args)
             with tqdm(total=total, unit="frame", leave=False) as pbar:
                 while cap.isOpened():
@@ -347,12 +351,13 @@ def process_gif_output(input_path, output_path, args, role_queue):
     if not cap.isOpened(): return
     try:
         fps = cap.get(cv2.CAP_PROP_FPS) or 24
-        if GIF_FPS_LIMIT > 0 and fps > GIF_FPS_LIMIT: fps = GIF_FPS_LIMIT
+        if args.gif_fps_limit > 0 and fps > args.gif_fps_limit:
+            fps = args.gif_fps_limit
         duration = 1000 / fps
         print(f"🎞 GIF: {os.path.basename(input_path)}")
 
         frames = []
-        with ProcessPoolExecutor(max_workers=get_total_workers(args), initializer=init_worker, initargs=(role_queue, args.model, args.verbose)) as executor:
+        with ProcessPoolExecutor(max_workers=get_total_workers(args), initializer=init_worker, initargs=(role_queue, args.model, args.verbose, args.img_quality)) as executor:
             bs = get_total_workers(args) * 2
             while cap.isOpened():
                 batch = []
@@ -468,7 +473,10 @@ if __name__ == "__main__":
     parser.add_argument("-m", "--model", default=DEFAULT_MODEL, choices=AVAILABLE_MODELS)
     parser.add_argument("--list-models", action="store_true")
     parser.add_argument("--img-format", default=DEFAULT_IMG_EXT, choices=["png", "webp", "jpg"])
+    parser.add_argument("--img-quality", type=int, default=DEFAULT_IMG_QUALITY, help="JPEG/WebP quality (1-100)")
     parser.add_argument("--vid-format", default=DEFAULT_VID_EXT, choices=["webm", "mp4", "gif"])
+    parser.add_argument("--video-bitrate", default=DEFAULT_VIDEO_BITRATE, help="WebM bitrate, e.g. 2M")
+    parser.add_argument("--gif-fps-limit", type=int, default=DEFAULT_GIF_FPS_LIMIT, help="Limit GIF FPS (0 = no limit)")
     parser.add_argument("--coreml", type=int, default=def_coreml)
     parser.add_argument("--cpu", type=int, default=def_cpu)
     parser.add_argument("--bg-color", default="black")

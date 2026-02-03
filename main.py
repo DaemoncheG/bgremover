@@ -1,6 +1,5 @@
 import sys
 import os
-import cv2
 import argparse
 import subprocess
 import multiprocessing
@@ -9,7 +8,6 @@ import io
 import platform
 import shutil
 import numpy as np
-from rembg import remove, new_session
 from concurrent.futures import ProcessPoolExecutor
 from tqdm import tqdm
 from PIL import Image, ImageOps
@@ -92,6 +90,7 @@ def get_hardware_defaults():
 def init_worker(role_queue, model_name, verbose, img_quality):
     global worker_session
     global IMG_QUALITY
+    from rembg import new_session
     IMG_QUALITY = img_quality
     os.environ["ORT_LOGGING_LEVEL"] = "3"
     providers = ['CPUExecutionProvider']
@@ -160,12 +159,15 @@ def transfer_audio(source_path, target_path, verbose=False):
 # --- PROCESSORS ---
 
 def process_frame_safe(frame):
+    import cv2
+    from rembg import remove
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     pil_img = Image.fromarray(frame_rgb)
     result_pil = remove(pil_img, session=worker_session).convert("RGBA")
     return np.array(result_pil, dtype=np.uint8)
 
 def process_single_image_task(task):
+    from rembg import remove
     input_path, output_path = task
     try:
         with open(input_path, 'rb') as i: input_data = i.read()
@@ -226,6 +228,7 @@ def process_images_batch(files_list, args, manager):
         for _ in tqdm(executor.map(process_single_image_task, files_list), total=len(files_list), unit="img"): pass
 
 def process_video_mp4_h264(input_path, output_path, args, role_queue, bg_color):
+    import cv2
     cap = cv2.VideoCapture(input_path)
     if not cap.isOpened(): return
     try:
@@ -295,6 +298,7 @@ def process_video_mp4_h264(input_path, output_path, args, role_queue, bg_color):
     finally: cap.release()
 
 def process_webm_transparent(input_path, output_path, args, role_queue):
+    import cv2
     cap = cv2.VideoCapture(input_path)
     if not cap.isOpened(): return
     try:
@@ -347,10 +351,13 @@ def process_webm_transparent(input_path, output_path, args, role_queue):
     finally: cap.release()
 
 def process_gif_output(input_path, output_path, args, role_queue):
+    import cv2
     cap = cv2.VideoCapture(input_path)
     if not cap.isOpened(): return
     try:
-        fps = cap.get(cv2.CAP_PROP_FPS) or 24
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        if not fps or fps <= 0:
+            fps = 24
         if args.gif_fps_limit > 0 and fps > args.gif_fps_limit:
             fps = args.gif_fps_limit
         duration = 1000 / fps
@@ -375,7 +382,25 @@ def process_gif_output(input_path, output_path, args, role_queue):
     finally: cap.release()
 
 def parse_bg_color(name):
-    return {'black':(0,0,0), 'white':(255,255,255), 'green':(0,255,0), 'blue':(255,0,0)}.get(name.lower(), (0,0,0))
+    colors = {'black': (0, 0, 0), 'white': (255, 255, 255), 'green': (0, 255, 0), 'blue': (255, 0, 0)}
+    key = name.lower()
+    if key not in colors:
+        print("⚠️ Неизвестный цвет фона. Доступные варианты: black, white, green, blue. Использую black.")
+        return colors['black']
+    return colors[key]
+
+def default_output_path(input_path, args):
+    if os.path.isdir(input_path):
+        base = os.path.basename(os.path.normpath(input_path))
+        parent = os.path.dirname(os.path.normpath(input_path))
+        return os.path.join(parent, f"{base}_out")
+    if os.path.isfile(input_path):
+        base, _ = os.path.splitext(input_path)
+        if is_image(input_path):
+            return f"{base}_out.{args.img_format}"
+        if is_video(input_path):
+            return f"{base}_out.{args.vid_format}"
+    return None
 
 def run_processing(input_path, output_path, args, manager):
     in_abs = norm_path(input_path)
@@ -451,6 +476,8 @@ def run_processing(input_path, output_path, args, manager):
 
     if files_img: process_images_batch(files_img, args, manager)
 
+    if files_vid:
+        check_environment()
     bg = parse_bg_color(args.bg_color)
     for i, (inp, out) in enumerate(files_vid):
         print(f"[{i+1}/{len(files_vid)}] Видео...")
@@ -464,12 +491,11 @@ def run_processing(input_path, output_path, args, manager):
 
 if __name__ == "__main__":
     multiprocessing.set_start_method('spawn', force=True)
-    check_environment()
     def_coreml, def_cpu = get_hardware_defaults()
 
     parser = argparse.ArgumentParser(description="RemBG Pipeline (Endgame Edition)", formatter_class=argparse.RawTextHelpFormatter, epilog="Models: "+", ".join(AVAILABLE_MODELS))
     parser.add_argument("input", nargs='?', help="Input")
-    parser.add_argument("output", nargs='?', help="Output")
+    parser.add_argument("output", nargs='?', help="Output (optional, auto-generated if missing)")
     parser.add_argument("-m", "--model", default=DEFAULT_MODEL, choices=AVAILABLE_MODELS)
     parser.add_argument("--list-models", action="store_true")
     parser.add_argument("--img-format", default=DEFAULT_IMG_EXT, choices=["png", "webp", "jpg"])
@@ -488,12 +514,21 @@ if __name__ == "__main__":
         print("\n".join(AVAILABLE_MODELS))
         sys.exit(0)
 
-    if not args.input or not args.output:
+    if not args.input:
         parser.print_help()
         sys.exit(1)
     if not os.path.exists(args.input):
         print("❌ Вход не найден")
         sys.exit(1)
+    if not args.output:
+        args.output = default_output_path(args.input, args)
+        if not args.output:
+            print("❌ Не удалось определить выходной путь для данного типа входа.")
+            sys.exit(1)
+        print(f"ℹ️ Выход не указан. Использую: {args.output}")
+    if not 1 <= args.img_quality <= 100:
+        print(f"⚠️ --img-quality должен быть в диапазоне 1-100. Использую значение по умолчанию: {DEFAULT_IMG_QUALITY}.")
+        args.img_quality = DEFAULT_IMG_QUALITY
 
     with multiprocessing.Manager() as manager:
         run_processing(args.input, args.output, args, manager)

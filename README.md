@@ -70,10 +70,14 @@ pip install -r requirements.txt
 ### Синтаксис CLI
 
 ```bash
-python main.py <input> <output> [options]
+python main.py <input> [output] [options]
 ```
 
-`input` может быть файлом или папкой. `output` — файл или папка.
+`input` может быть файлом или папкой. `output` — файл или папка (необязательно).
+Если `output` не указан, путь создаётся автоматически рядом с входом:
+
+- файл: `photo.jpg` → `photo_out.png` (по умолчанию формат берётся из `--img-format`/`--vid-format`)
+- папка: `input/` → `input_out/`
 
 > Важно: фактический формат вывода **всегда** задаётся через `--img-format` и `--vid-format`
 > (по умолчанию: `png` и `webm`). Если указать `output.jpg`, но оставить `--img-format png`,
@@ -108,6 +112,12 @@ python main.py input.mp4 output.webm --verbose
 ```bash
 # Входная картинка -> прозрачный PNG
 python main.py input.jpg output.png
+```
+
+**1.1) Самый простой вариант без output**
+```bash
+# Входная картинка -> input_out.png рядом
+python main.py input.jpg
 ```
 
 **2) Явно указать модель**

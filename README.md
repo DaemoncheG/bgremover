@@ -312,11 +312,12 @@ python main.py --list-models
 Автотесты (pytest):
 
 ```bash
-pytest
+pip install -r requirements-dev.txt
+python -m pytest
 ```
 
 Если нужны только быстрые тесты без интеграционных:
 
 ```bash
-pytest -m "not slow"
+python -m pytest -m "not slow"
 ```
